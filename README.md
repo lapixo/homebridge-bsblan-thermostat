@@ -6,7 +6,7 @@
 
 # homebridge-bsblan-thermostat
 
-[![npm](https://img.shields.io/npm/v/homebridge-bsblan-thermostat.svg)](https://www.npmjs.com/package/@bsblan/homebridge-bsblan-thermostat) [![npm](https://img.shields.io/npm/dt/homebridge-bsblan-thermostat.svg)](https://www.npmjs.com/package/@bsblan/homebridge-bsblan-thermostat)
+[![npm](https://img.shields.io/npm/v/@bsblan/homebridge-bsblan-thermostat.svg)](https://www.npmjs.com/package/@bsblan/homebridge-bsblan-thermostat) [![npm](https://img.shields.io/npm/dt/@bsblan/homebridge-bsblan-thermostat.svg)](https://www.npmjs.com/package/@bsblan/homebridge-bsblan-thermostat)
 
 </span>
 
