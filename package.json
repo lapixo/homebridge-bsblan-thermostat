@@ -1,5 +1,5 @@
 {
-  "name": "homebridge-bsblan-thermostat",
+  "name": "@bsblan/homebridge-bsblan-thermostat",
   "version": "1.0.0",
   "description": "Homebridge plugin for a bsblan based thermostat",
   "main": "index.js",
@@ -16,15 +16,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Tommrodrigues/homebridge-web-thermostat.git"
+    "url": "git+https://github.com/lapixo/homebridge-bsblan-thermostat.git"
   },
   "keywords": [
     "homebridge-plugin"
   ],
-  "author": "Tom Rodrigues",
+  "author": "michaelfeuerstein",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Tommrodrigues/homebridge-web-thermostat/issues"
+    "url": "https://github.com/lapixo/homebridge-bsblan-thermostat/issues"
   },
-  "homepage": "https://github.com/Tommrodrigues/homebridge-web-thermostat#readme"
+  "homepage": "https://github.com/lapixo/homebridge-bsblan-thermostat#readme",
+  "devDependencies": {}
 }
