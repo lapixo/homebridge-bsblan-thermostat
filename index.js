@@ -7,7 +7,7 @@ const http = require('http');
 module.exports = function (homebridge) {
   Service = homebridge.hap.Service;
   Characteristic = homebridge.hap.Characteristic;
-  homebridge.registerAccessory('homebridge-bsblan-thermostat', 'Thermostat', Thermostat)
+  homebridge.registerAccessory('bsblan/homebridge-bsblan-thermostat', 'Thermostat', Thermostat)
 };
 
 function Thermostat (log, config) {
