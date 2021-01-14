@@ -27,11 +27,12 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 
 ```json
 "accessories": [
-     {
-       "accessory": "Thermostat",
-       "name": "Thermostat",
-       "apiroute": "http://myurl.com"
-     }
+    {
+        "accessory": "Thermostat",
+        "name": "Thermostat-HK1",
+        "apiroute": "http://BSB_LAN_IP",
+        "pollInterval": 160
+    }
 ]
 ```
 
@@ -43,9 +44,9 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 | `apiroute` | Root URL of your device | http://bsb-lan |
 
 ### Optional fields
-| Key | Description | Default | bei isTrinkWasser (true) |
+| Key | Description | Default | bei isDHW (true) |
 | --- | --- | --- | --- |
-| `isTrinkWasser` | TWW Kreis aktivieren | `false` |  |
+| `isDHW` | TWW Kreis aktivieren | `false` |  |
 | `currentTemperatureID` | The BSB ID | `8740` | `8830` |
 | `targetTemperatureID` | The BSB ID | `8740` | `8831` |
 | `heatingStateID` | The BSB ID | `700` | `1600` |
@@ -60,15 +61,21 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 | `minStep` | Minimum increment value for the temperature selector in the Home app | `0.5` | `0.5` |
 | `temperatureThresholds` | Whether you want the thermostat accessory to have heating and cooling temperature thresholds | `false` | `false` |
 
-### Nutzung als Trinkwasser Thermostat
+### Use as DHW Thermostat
 ```
-Wichtig: Ist isTrinkWasser=true wird das Thermostat auf den Trinkwasser HK umgelenkt.
-Das Thermostat löst beim Umstellen auf "Heizen" ein Trinkwasserpush aus,
-und dann wieder zurück auf "Automatisch" gestellt.
-Der Trinkwasserbetrieb 1 (an) wird bei Homekit als "Automatisch" angezeigt
+Important: If "isDHW" is set to true, the Thermostat
+Properties changed to the DHW BSB-IDs. 
+The Thermostat trigger a DHW-Push, if it
+is set to "heat". After the Push the Thermostat
+is changed back to the last state (auto, off, or cool).
+"automatic" is mapped fixed to the BSB DHW-State "on".
+"cool" is mapped fixed to the BSB DHW-State "eco"
+"off" is mapped fixed to the BSB DHW-State "off"
+"Heat" is only used to trigger the push.  
 
-Beispiel Config mit zwei Thermostaten:
-
+Example Config with to Thermostate:
+```
+```json
     "accessories": [
         {
             "accessory": "Thermostat",
@@ -81,12 +88,10 @@ Beispiel Config mit zwei Thermostaten:
             "name": "Thermostat-TW",
             "apiroute": "http://BSB_LAN_IP",
             "pollInterval": 120,
-            "isTrinkWasser": true
+            "isDHW": true
         }
     ],
-
 ```
-
 
 
 ### Additional options
