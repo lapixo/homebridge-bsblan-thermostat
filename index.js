@@ -7,19 +7,30 @@ const http = require('http');
 module.exports = function (homebridge) {
   Service = homebridge.hap.Service;
   Characteristic = homebridge.hap.Characteristic;
-  homebridge.registerAccessory('bsblan/homebridge-bsblan-thermostat', 'Thermostat', Thermostat)
+  homebridge.registerAccessory('bsblan/homebridge-bsblan-thermostat', 'Thermostat', Thermostat);
 };
+
 
 function Thermostat (log, config) {
   this.log = log;
 
-  this.name = config.name;
-  this.apiroute = config.apiroute;
+  this.name = config.name || 'BSB-LAN';
+  this.apiroute = config.apiroute  || 'http://bsb-lan';
   this.pollInterval = config.pollInterval || 300;
+
+  this.isTrinkWasser = config.isTrinkWasser || false;
+
+  this.currentTemperatureID = config.currentTemperatureID || 8740;
+  this.targetTemperatureID = config.targetTemperatureID || 8741;
+  this.heatingStateID = config.heatingStateID || 700;
+  this.comfortTempID = config.comfortTempID || 710;
+  this.coolingTempID = config.coolingTempID || 712;
+  this.humiditySensorID = config.humiditySensorID || 20102;
+
 
   this.listener = config.listener || false;
   this.port = config.port || 2000;
-  this.requestArray = ['targetHeatingCoolingState', 'targetTemperature', 'coolingThresholdTemperature', 'heatingThresholdTemperature'];
+  this.requestArray = ['targetHeatingCoolingState', 'targetTemperature', 'coolingThresholdTemperature', 'heatingThresholdTemperature', 'getCurrentTemperatur', 'getTargetTemperature'];
 
   this.manufacturer = config.manufacturer || packageJson.author.name;
   this.serial = config.serial || this.apiroute;
@@ -39,6 +50,19 @@ function Thermostat (log, config) {
   this.maxTemp = config.maxTemp || 30;
   this.minTemp = config.minTemp || 15;
   this.minStep = config.minStep || 0.5;
+
+
+
+  if (this.isTrinkWasser){
+    this.currentTemperatureID = config.currentTemperatureID || 8830;
+    this.targetTemperatureID = config.targetTemperatureID || 8831;
+    this.heatingStateID = config.heatingStateID || 1600;
+    this.comfortTempID = config.comfortTempID || 1610;
+    this.coolingTempID = config.coolingTempID || 1612;
+    this.maxTemp = config.maxTemp || 60;
+    this.minTemp = config.minTemp || 45;
+  }
+
 
   this.currentState = 0;
 
@@ -98,37 +122,71 @@ Thermostat.prototype = {
   },
 
 
-  _mapState(state){
+  _mapStateFromBSB(state){
     this.log.debug('Map state: %s', state);
-    switch (state) {
-      case '0':
-        return 0;
-      case '1':
-        return 3;
-      case '2':
-        return 2;
-      case '3':
-        return 1;
+    if (this.isTrinkWasser){
+      switch (state) {
+        case '0': // Aus
+          return 0; // Off
+        case '1': // Ein
+          return 3; // Auto
+        case '2': // Eco
+          return 2; // cool
+      }
+    }else{
+      switch (state) {
+        case '0': // Schutz
+          return 0; // Off
+        case '1': // Komfort
+          return 3; // heat
+        case '2': // Reduziert
+          return 2; // cool
+        case '3': // Auto
+          return 1; // auto
+      }
     }
+
+
+
+
+
   },
 
   _mapStateFromHomekit(state){
     this.log.debug('Map state: %s', state);
-    switch (state) {
-      case 0:
-        return 0;
-      case 1:
-        return 3;
-      case 2:
-        return 2;
-      case 3:
-        return 1;
+    if (this.isTrinkWasser){
+      switch (state) {
+        case 0: // off
+          return 0; // Aus
+        case 3: // auto
+          return 1; // Ein
+        case 2: // cool
+          return 2; // Eco
+        case 1: // heat
+          return 1; // Ein
+      }
+    }else{
+      switch (state) {
+        case 0: // off
+          return 0; // Schutz
+        case 1: // heat
+          return 3; // Komfort
+        case 2: // cool
+          return 2; // Reduzier
+        case 3: // auto
+          return 1; // Auto
+      }
     }
+
+
+
+
   },
 
   _getStatus: function (callback) {
 
-    var url = this.apiroute + '/JQ=8740,8741,700';
+
+    var url = this.apiroute + '/JQ='+this.currentTemperatureID+','+this.targetTemperatureID+','+this.heatingStateID+','+this.humiditySensorID+','+this.comfortTempID+','+this.coolingTempID;
     this.log.debug('Getting status: %s', url);
 
 
@@ -139,28 +197,29 @@ Thermostat.prototype = {
         this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(new Error('Polling failed'));
         callback(error)
       } else {
+
         this.log.debug('Device response: %s', responseBody);
+
         var json = JSON.parse(responseBody);
         var htstate;
 
 
-        this.service.getCharacteristic(Characteristic.TargetTemperature).updateValue(json['8741'].value);
-        this.log.debug('Updated TargetTemperature to: %s', json['8741'].value);
+        this.service.getCharacteristic(Characteristic.TargetTemperature).updateValue(json[this.targetTemperatureID].value);
+        this.log('Updated TargetTemperature to: %s', json[this.targetTemperatureID].value);
 
-        this.service.getCharacteristic(Characteristic.CurrentTemperature).updateValue(json['8740'].value);
-        this.log.debug('Updated CurrentTemperature to: %s', json['8740'].value);
+        this.service.getCharacteristic(Characteristic.CurrentTemperature).updateValue(json[this.currentTemperatureID].value);
+        this.log('Updated CurrentTemperature to: %s', json[this.currentTemperatureID].value);
 
-
-        htstate = this._mapState(json['700'].value);
+        htstate = this._mapStateFromBSB(json[this.heatingStateID].value);
 
         this.currentState = htstate;
 
-        this.log.debug('Mapped state: %s', htstate);
+        this.log('Mapped state: %s', htstate);
         this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(htstate);
-        this.log.debug('Updated TargetHeatingCoolingState to: %s', htstate);
+        this.log('Updated TargetHeatingCoolingState to: %s', htstate);
 
         this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(htstate);
-        this.log.debug('Updated CurrentHeatingCoolingState to: %s', htstate);
+        this.log('Updated CurrentHeatingCoolingState to: %s', htstate);
 
         if (this.temperatureThresholds) {
           this.service.getCharacteristic(Characteristic.CoolingThresholdTemperature).updateValue(json.coolingThresholdTemperature);
@@ -169,8 +228,8 @@ Thermostat.prototype = {
           this.log.debug('Updated HeatingThresholdTemperature to: %s', json.heatingThresholdTemperature)
         }
         if (this.currentRelativeHumidity) {
-          this.service.getCharacteristic(Characteristic.CurrentRelativeHumidity).updateValue(json.currentRelativeHumidity);
-          this.log.debug('Updated CurrentRelativeHumidity to: %s', json.currentRelativeHumidity)
+          this.service.getCharacteristic(Characteristic.CurrentRelativeHumidity).updateValue(json[this.humiditySensorID].value);
+          this.log('Updated CurrentRelativeHumidity to: %s', json[this.humiditySensorID].value)
         }
         callback()
       }
@@ -195,6 +254,14 @@ Thermostat.prototype = {
         this.service.getCharacteristic(Characteristic.HeatingThresholdTemperature).updateValue(value);
         this.log('Updated %s to: %s', characteristic, value);
         break
+      case 'getCurrentTemperatur':
+        this.service.getCharacteristic(Characteristic.CurrentTemperature);
+        this.log('getCurrentTemperatur %s ', characteristic);
+        break
+      case 'getTargetTemperature':
+        this.service.getCharacteristic(Characteristic.TargetTemperature);
+        this.log('getTargetTemperature %s ', characteristic);
+        break
       default:
         this.log.warn('Unknown characteristic "%s" with value "%s"', characteristic, value)
     }
@@ -203,9 +270,15 @@ Thermostat.prototype = {
   setTargetHeatingCoolingState: function (value, callback) {
     var htstate;
     htstate = this._mapStateFromHomekit(value);
-    var url = this.apiroute + '/S700=' + htstate;
-    this.log.debug('Setting targetHeatingCoolingState: %s', url);
 
+
+    // Bei Trinkwasser und beim setzen des Status auf "heat/heizen" wird ein TWW-Push ausgelöst
+    if ((this.isTrinkWasser==true) && (value == 1)){
+      this.setTrinkwasserPush();
+    }
+
+    var url = this.apiroute + '/S'+this.heatingStateID+'=' + htstate;
+    this.log.debug('Setting targetHeatingCoolingState: %s', url);
     this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
       if (error) {
         this.log.warn('Error setting targetHeatingCoolingState: %s', error.message);
@@ -218,14 +291,31 @@ Thermostat.prototype = {
     }.bind(this))
   },
 
+  setTrinkwasserPush: function () {
+    var url = this.apiroute + '/S1603=1';
+    this.log.debug('setTrinkwasserPush: %s', url);
+    this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
+      if (error) {
+        this.log.warn('Error setting setTrinkwasserPush: %s', error.message);
+      } else {
+        this.log('setTrinkwasserPush erfolgreich');
+      }
+    }.bind(this))
+  },
+
   setTargetTemperature: function (value, callback) {
     value = value.toFixed(1)
 
-    var url = this.apiroute + '/S710=' + value;
-    if (this.currentState == 2)
-    url = this.apiroute + '/S712=' + value;
+    var cState;
+    var tState;
+    cState = this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState);
+    tState = this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState);
 
-    this.log.debug('Setting targetTemperature: %s', url);
+    var url = this.apiroute + '/S'+this.comfortTempID+'=' + value;
+    if ((this.currentState == 2) || (cState == 2) || (tState == 2))
+      url = this.apiroute + '/S'+this.coolingTempID+'=' + value;
+
+    this.log('Setting targetTemperature: %s', url);
 
     this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
       if (error) {
