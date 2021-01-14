@@ -18,7 +18,7 @@ function Thermostat (log, config) {
   this.apiroute = config.apiroute  || 'http://bsb-lan';
   this.pollInterval = config.pollInterval || 300;
 
-  this.isTrinkWasser = config.isTrinkWasser || false;
+  this.isDHW = config.isDHW || false;
 
   this.currentTemperatureID = config.currentTemperatureID || 8740;
   this.targetTemperatureID = config.targetTemperatureID || 8741;
@@ -53,7 +53,7 @@ function Thermostat (log, config) {
 
 
 
-  if (this.isTrinkWasser){
+  if (this.isDHW){
     this.currentTemperatureID = config.currentTemperatureID || 8830;
     this.targetTemperatureID = config.targetTemperatureID || 8831;
     this.heatingStateID = config.heatingStateID || 1600;
@@ -124,7 +124,7 @@ Thermostat.prototype = {
 
   _mapStateFromBSB(state){
     this.log.debug('Map state: %s', state);
-    if (this.isTrinkWasser){
+    if (this.isDHW){
       switch (state) {
         case '0': // Aus
           return 0; // Off
@@ -154,7 +154,7 @@ Thermostat.prototype = {
 
   _mapStateFromHomekit(state){
     this.log.debug('Map state: %s', state);
-    if (this.isTrinkWasser){
+    if (this.isDHW){
       switch (state) {
         case 0: // off
           return 0; // Aus
@@ -272,9 +272,9 @@ Thermostat.prototype = {
     htstate = this._mapStateFromHomekit(value);
 
 
-    // Bei Trinkwasser und beim setzen des Status auf "heat/heizen" wird ein TWW-Push ausgelöst
-    if ((this.isTrinkWasser==true) && (value == 1)){
-      this.setTrinkwasserPush();
+    // if DHW is set to true and the state is set to "heat", the DHWPush is triggered!
+    if ((this.isDHW==true) && (value == 1)){
+      this.setDHWPush();
     }
 
     var url = this.apiroute + '/S'+this.heatingStateID+'=' + htstate;
@@ -291,14 +291,14 @@ Thermostat.prototype = {
     }.bind(this))
   },
 
-  setTrinkwasserPush: function () {
+  setDHWPush: function () {
     var url = this.apiroute + '/S1603=1';
-    this.log.debug('setTrinkwasserPush: %s', url);
+    this.log.debug('setDHWPush: %s', url);
     this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
       if (error) {
-        this.log.warn('Error setting setTrinkwasserPush: %s', error.message);
+        this.log.warn('Error setting setDHWPush: %s', error.message);
       } else {
-        this.log('setTrinkwasserPush erfolgreich');
+        this.log('setDHWPush erfolgreich');
       }
     }.bind(this))
   },
