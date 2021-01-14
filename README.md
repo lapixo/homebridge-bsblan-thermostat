@@ -46,7 +46,7 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 ### Optional fields
 | Key | Description | Default | bei isDHW (true) |
 | --- | --- | --- | --- |
-| `isDHW` | TWW Kreis aktivieren | `false` |  |
+| `isDHW` | Use as DHW Thermostat  | `false` |  |
 | `currentTemperatureID` | The BSB ID | `8740` | `8830` |
 | `targetTemperatureID` | The BSB ID | `8740` | `8831` |
 | `heatingStateID` | The BSB ID | `700` | `1600` |
