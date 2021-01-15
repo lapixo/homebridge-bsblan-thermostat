@@ -30,7 +30,7 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
     {
         "accessory": "Thermostat",
         "name": "Thermostat-HK1",
-        "apiroute": "http://BSB_LAN_IP",
+        "apiroute": "BSB_LAN_IP",
         "pollInterval": 160
     }
 ]
@@ -41,11 +41,12 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 | --- | --- | --- |
 | `accessory` | Must be `Thermostat` | N/A |
 | `name` | Name to appear in the Home app | N/A |
-| `apiroute` | Root URL of your device | http://bsb-lan |
+| `apiroute` | Root HTTP URL of your device without trailing slash  | http://bsb-lan |
 
 ### Optional fields
 | Key | Description | Default | bei isDHW (true) |
 | --- | --- | --- | --- |
+| `passKey` | Passkey of the BSB lan address |  |
 | `isDHW` | Use as DHW Thermostat  | `false` |  |
 | `currentTemperatureID` | The BSB ID | `8740` | `8830` |
 | `targetTemperatureID` | The BSB ID | `8740` | `8831` |
