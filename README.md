@@ -30,7 +30,7 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
     {
         "accessory": "Thermostat",
         "name": "Thermostat-HK1",
-        "apiroute": "BSB_LAN_IP",
+        "apiroute": "http://bsb-lan_ip",
         "pollInterval": 160
     }
 ]
