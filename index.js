@@ -281,6 +281,8 @@ Thermostat.prototype = {
             this.setDHWPush();
         }
 
+        this._getStatus(function () {});    // poll current values from heater to display correct destination temperature
+
         var url = this.apiroute + '/S' + this.heatingStateID + '=' + htstate;
         this.log.debug('Setting targetHeatingCoolingState: %s', url);
         this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
@@ -310,14 +312,14 @@ Thermostat.prototype = {
     setTargetTemperature: function (value, callback) {
         value = value.toFixed(1)
 
-        var cState;
-        var tState;
-        cState = this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState);
-        tState = this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState);
+        tState = this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).value;
 
         var url = this.apiroute + '/S' + this.comfortTempID + '=' + value;
-        if ((this.currentState == 2) || (cState == 2) || (tState == 2))
-            url = this.apiroute + '/S' + this.coolingTempID + '=' + value;
+        if (tState == 2) {
+          url = this.apiroute + '/S' + this.coolingTempID + '=' + value;
+          this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(tState);
+          this.log('Set targetHeatingCoolingState to: %s', tState);
+        }
 
         this.log('Setting targetTemperature: %s', url);
 
