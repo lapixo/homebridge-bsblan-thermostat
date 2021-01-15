@@ -19,12 +19,9 @@ function Thermostat(log, config) {
     this.apiroute = this.apiroute.replace(/^(.+?)\/*?$/, "$1");
 
     this.passKey = config.passKey;
-
-
-
     if (this.passKey != undefined || this.passKey != null) {
       this.passKey = this.passKey.replace(/^\/|\/$/g, '');
-      this.apiroute = this.apiroute +'/'+this.passKey+'/';
+      this.apiroute = this.apiroute +'/'+this.passKey;
     }
 
     this.log('API URL IS: "%s"',this.apiroute);
