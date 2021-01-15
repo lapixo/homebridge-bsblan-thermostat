@@ -44,7 +44,7 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 | `apiroute` | Root HTTP URL of your device without trailing slash  | http://bsb-lan |
 
 ### Optional fields
-| Key | Description | Default | bei isDHW (true) |
+| Key | Description | Default | if isDHW (true) |
 | --- | --- | --- | --- |
 | `passKey` | Passkey of the BSB lan address |  |
 | `isDHW` | Use as DHW Thermostat  | `false` |  |
