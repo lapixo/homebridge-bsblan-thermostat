@@ -31,6 +31,13 @@ homeKitToBSBState[homeKitCurrentStates.cool] = bsbStates.cool;
 homeKitToBSBState[homeKitCurrentStates.heat] = bsbStates.heat;
 
 
+var homeKitToBSBStateStr = [];
+homeKitToBSBStateStr[homeKitCurrentStates.off] = 'off';
+homeKitToBSBStateStr[homeKitCurrentStates.auto] = 'auto';
+homeKitToBSBStateStr[homeKitCurrentStates.cool] = 'cool';
+homeKitToBSBStateStr[homeKitCurrentStates.heat] = 'heat';
+
+
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
@@ -62,13 +69,14 @@ function Thermostat(log, config) {
     this.statesForHeat = config.statesForHeat || [4, 102, 111, 112, 113, 114];
     this.statesForCool = config.statesForCool || [103, 104, 105, 106, 116];
     //this.statesForOff = config.statesForOff || [17, 22, 23, 24, 99, 115, 117, 118];
-    this.statesAutoHeat =config.statesAutoHeat || [114];
-    this.statesAutoCool =config.statesAutoCool || [116];
+
+    //his.statesAutoHeat = config.statesAutoHeat || [114];
+    //this.statesAutoCool = config.statesAutoCool || [116];
+    this.heatingStateID = config.heatingStateID || 700;
+    this.currentHeatOperationModeID = config.currentHeatOperationModeID || 10102;
 
     this.currentTemperatureID = config.currentTemperatureID || 8740;
     //this.targetTemperatureID = config.targetTemperatureID || 8741;
-
-    this.heatingStateID = config.heatingStateID || 700;
 
     this.comfortTempID = config.comfortTempID || 710;
     this.coolingTempID = config.coolingTempID || 712;
@@ -104,7 +112,7 @@ function Thermostat(log, config) {
 
     if (this.isDHW) {
         this.currentHeatingCircuitStateID = config.currentHeatingCircuitStateID || 8003;
-        this.statesForHeat = config.statesForHeat || [95,96];
+        this.statesForHeat = config.statesForHeat || [95, 96];
         this.statesForCool = config.statesForCool || [97];
         //this.statesForOff = config.statesForOff || [25];
 
@@ -123,6 +131,7 @@ function Thermostat(log, config) {
     }
 
 
+    this.currentOPState = 0;
     this.currentState = 0;
     this.targetState = 0;
 
@@ -196,8 +205,6 @@ Thermostat.prototype = {
 
 
     _mapCurrentState: function (cState) {
-        this.log('intern State %s', cState);
-
         if (this.statesForHeat.includes(cState))
             return homeKitCurrentStates.heat;
         else if (this.statesForCool.includes(cState))
@@ -205,6 +212,18 @@ Thermostat.prototype = {
         else //  (this.statesForOff.includes(state))
             return homeKitCurrentStates.off;
     },
+
+    _mapCurrentOPState: function (cState) {
+        var id = cState.substring(2, 4);
+        if (id == '01' || id == '03') {
+            return homeKitCurrentStates.cool;
+        } else if (id == '02' || id == '04') {
+            return homeKitCurrentStates.heat;
+        } else {
+            return homeKitCurrentStates.heat;
+        }
+    },
+
 
     _getTemperatureBSBId(cState) {
         //var tState = this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).value;
@@ -225,21 +244,19 @@ Thermostat.prototype = {
 
     _getTargetTempID: function () {
 
-        if (this.isDHW){
+        if (this.isDHW || (this.targetState != homeKitCurrentStates.auto)) {
             return this._getTemperatureBSBId(this.targetState);
-        }else{
-            if(this.targetState == homeKitCurrentStates.auto){
-
-                if (this.statesAutoHeat.includes(this.currentState))
-                    return this._getTemperatureBSBId(homeKitCurrentStates.heat);
-                else if (this.statesAutoCool.includes(this.currentState))
-                    return this._getTemperatureBSBId(homeKitCurrentStates.cool);
-                else
-                    return this._getTemperatureBSBId(this.targetState);
-
-            }else{
+        } else {
+            return this._mapCurrentOPState(this.currentOPState);
+            /*
+            if (this.statesAutoHeat.includes(this.currentState))
+                return this._getTemperatureBSBId(homeKitCurrentStates.heat);
+            else if (this.statesAutoCool.includes(this.currentState))
+                return this._getTemperatureBSBId(homeKitCurrentStates.cool);
+            else
                 return this._getTemperatureBSBId(this.targetState);
-            }
+            */
+
         }
 
 
@@ -287,7 +304,7 @@ Thermostat.prototype = {
             if (this.isInGetStatus === false) {
 
                 var targedTempID = this._getTargetTempID();
-                var url = this.apiroute + '/JQ=' + this.currentHeatingCircuitStateID + ',' + this.heatingStateID + ',' + this.currentTemperatureID + ',' + this.humiditySensorID + ',' + targedTempID;
+                var url = this.apiroute + '/JQ=' + this.currentHeatOperationModeID + ',' + this.currentHeatingCircuitStateID + ',' + this.heatingStateID + ',' + this.currentTemperatureID + ',' + this.humiditySensorID + ',' + targedTempID;
 
                 this.log('Getting status: %s', url);
                 this.isInGetStatus = true; // prevent multiple call at the same time, because the BSB cannot handle multi request
@@ -309,14 +326,22 @@ Thermostat.prototype = {
                             var currentTemperature = json[this.currentTemperatureID].value;
                             var homeKitState = bsbToHomeKitState[parseInt(heatingState)];
 
+
+                            if (!this.isDHW){
+                                this.currentOPState = this._mapCurrentOPState(json[this.currentHeatOperationModeID].value);
+                                this.log('Updated CurrentOPState to: %s', homeKitToBSBStateStr[this.currentOPState]);
+                            }
+
+
+
                             this.targetState = homeKitState;
                             this.currentState = this._mapCurrentState(parseInt(currentHeatingState));
 
-                            this.log('Update TargetHeatingCoolingState to: %s', homeKitState);
+                            this.log('Update TargetHeatingCoolingState to: %s', homeKitToBSBStateStr[homeKitState]);
                             this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(homeKitState);
 
 
-                            this.log('Update CurrentHeatingCoolingState to: %s', this.currentState);
+                            this.log('Update CurrentHeatingCoolingState to: %s', homeKitToBSBStateStr[this.currentState]);
                             this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(this.currentState);
 
                             this.service.getCharacteristic(Characteristic.TargetTemperature).updateValue(json[targedTempID].value);
@@ -396,12 +421,12 @@ Thermostat.prototype = {
                     this.log.warn('Error setting targetHeatingCoolingState: %s', error.message);
                 } else {
                     this.targetState = homeKitState;
-                    this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(homeKitState);
-                    this.log('Set CurrentHeatingCoolingState to: %s', homeKitState);
-
+                    //this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(homeKitState);
+                    this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(homeKitState);
+                    //this.log('Set CurrentHeatingCoolingState to: %s', homeKitState);
+                    this.log('Set TargetHeatingCoolingState to: %s', homeKitToBSBStateStr[homeKitState]);
                     this._getStatusTargetTemperature(function () {});
-                    this.log('Set targetHeatingCoolingState to: %s', homeKitState);
-                    this.targetState = homeKitState;
+
                 }
                 if (callback) {
                     if (error) {
