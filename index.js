@@ -4,6 +4,33 @@ const request = require('request');
 const ip = require('ip');
 const http = require('http');
 
+
+const homeKitCurrentStates = {
+    off: 0,
+    heat: 1,
+    cool: 2,
+    auto: 3,
+};
+
+const bsbStates = {
+    off: 0,
+    auto: 1,
+    cool: 2,
+    heat: 3,
+};
+var bsbToHomeKitState = [];
+bsbToHomeKitState[bsbStates.off] = homeKitCurrentStates.off;
+bsbToHomeKitState[bsbStates.auto] = homeKitCurrentStates.auto;
+bsbToHomeKitState[bsbStates.cool] = homeKitCurrentStates.cool;
+bsbToHomeKitState[bsbStates.heat] = homeKitCurrentStates.heat;
+
+var homeKitToBSBState = [];
+homeKitToBSBState[homeKitCurrentStates.off] = bsbStates.off;
+homeKitToBSBState[homeKitCurrentStates.auto] = bsbStates.auto;
+homeKitToBSBState[homeKitCurrentStates.cool] = bsbStates.cool;
+homeKitToBSBState[homeKitCurrentStates.heat] = bsbStates.heat;
+
+
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
@@ -26,18 +53,29 @@ function Thermostat(log, config) {
 
     this.log('API URL IS: "%s"', this.apiroute);
 
-    this.pollInterval = config.pollInterval || 300;
+    this.pollInterval = config.pollInterval || 35;
 
     this.isDHW = config.isDHW || false;
 
+
+    this.currentHeatingCircuitStateID = config.currentHeatingCircuitStateID || 8000;
+    this.statesForHeat = config.statesForHeat || [4, 102, 111, 112, 113, 114];
+    this.statesForCool = config.statesForCool || [103, 104, 105, 106, 116];
+    //this.statesForOff = config.statesForOff || [17, 22, 23, 24, 99, 115, 117, 118];
+    this.statesAutoHeat =config.statesAutoHeat || [114];
+    this.statesAutoCool =config.statesAutoCool || [116];
+
     this.currentTemperatureID = config.currentTemperatureID || 8740;
-    this.targetTemperatureID = config.targetTemperatureID || 8741;
+    //this.targetTemperatureID = config.targetTemperatureID || 8741;
+
     this.heatingStateID = config.heatingStateID || 700;
+
     this.comfortTempID = config.comfortTempID || 710;
     this.coolingTempID = config.coolingTempID || 712;
+    this.frostTempID = config.frostTempID || 714;
+
+
     this.humiditySensorID = config.humiditySensorID || 20102;
-
-
     this.listener = config.listener || false;
     this.port = config.port || 2000;
     this.requestArray = ['targetHeatingCoolingState', 'targetTemperature', 'coolingThresholdTemperature', 'heatingThresholdTemperature', 'getCurrentTemperatur', 'getTargetTemperature'];
@@ -49,8 +87,9 @@ function Thermostat(log, config) {
 
     this.username = config.username || null;
     this.password = config.password || null;
-    this.timeout = config.timeout || 3000;
+    this.timeout = config.timeout || 1000;
     this.http_method = config.http_method || 'GET';
+    this.setterDelay = config.setterDelay || 1000;
 
     this.temperatureThresholds = config.temperatureThresholds || false;
     this.heatOnly = config.heatOnly || false;
@@ -64,17 +103,28 @@ function Thermostat(log, config) {
     this.isInGetStatus = false;
 
     if (this.isDHW) {
+        this.currentHeatingCircuitStateID = config.currentHeatingCircuitStateID || 8003;
+        this.statesForHeat = config.statesForHeat || [95,96];
+        this.statesForCool = config.statesForCool || [97];
+        //this.statesForOff = config.statesForOff || [25];
+
         this.currentTemperatureID = config.currentTemperatureID || 8830;
-        this.targetTemperatureID = config.targetTemperatureID || 8831;
+        //this.targetTemperatureID = config.targetTemperatureID || 8831;
+
         this.heatingStateID = config.heatingStateID || 1600;
+
         this.comfortTempID = config.comfortTempID || 1610;
         this.coolingTempID = config.coolingTempID || 1612;
+        this.frostTempID = config.frostTempID || 1612;
+
+
         this.maxTemp = config.maxTemp || 60;
         this.minTemp = config.minTemp || 45;
     }
 
 
     this.currentState = 0;
+    this.targetState = 0;
 
     if (this.username != null && this.password != null) {
         this.auth = {
@@ -112,6 +162,7 @@ function Thermostat(log, config) {
 
 Thermostat.prototype = {
 
+
     identify: function (callback) {
         this.log('Identify requested!');
         callback()
@@ -131,65 +182,7 @@ Thermostat.prototype = {
             })
     },
 
-
-    _mapStateFromBSB(state) {
-        this.log.debug('Map state: %s', state);
-        if (this.isDHW) {
-            switch (state) {
-                case '0': // Aus
-                    return 0; // Off
-                case '1': // Ein
-                    return 3; // Auto
-                case '2': // Eco
-                    return 2; // cool
-            }
-        } else {
-            switch (state) {
-                case '0': // Schutz
-                    return 0; // Off
-                case '1': // Komfort
-                    return 3; // heat
-                case '2': // Reduziert
-                    return 2; // cool
-                case '3': // Auto
-                    return 1; // auto
-            }
-        }
-
-
-    },
-
-    _mapStateFromHomekit(state) {
-        //this.log.debug('Map state: %s', state);
-        if (this.isDHW) {
-            switch (state) {
-                case 0: // off
-                    return 0; // Aus
-                case 3: // auto
-                    return 1; // Ein
-                case 2: // cool
-                    return 2; // Eco
-                case 1: // heat
-                    return 1; // Ein
-            }
-        } else {
-            switch (state) {
-                case 0: // off
-                    return 0; // Schutz
-                case 1: // heat
-                    return 3; // Komfort
-                case 2: // cool
-                    return 2; // Reduzier
-                case 3: // auto
-                    return 1; // Auto
-            }
-        }
-
-
-    },
-
-
-    _setDHWPush: function () {
+    _DHWPush: function () {
         var url = this.apiroute + '/S1603=1';
         this.log.debug('setDHWPush: %s', url);
         this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
@@ -201,89 +194,90 @@ Thermostat.prototype = {
         }.bind(this))
     },
 
-    _getTemperatureBSBId() {
-        var bsbsId;
 
-        var tState = this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).value;
-        var cState = this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).value;
+    _mapCurrentState: function (cState) {
+        this.log('intern State %s', cState);
 
-        //this.log('TargetHeatingCoolingState %s', tState);
-        //this.log('CurrentHeatingCoolingState %s', cState);
-
-        // State 2 is Cool
-        // State 1 is Heat
-        // State 3 is Auto
-        bsbsId = this.coolingTempID;
-        if (tState == 1 || tState == 3) {
-            bsbsId = this.comfortTempID;
-        }
-
-        //this.log('--_getTemperatureBSBId-- %s', bsbsId);
-
-        return bsbsId;
+        if (this.statesForHeat.includes(cState))
+            return homeKitCurrentStates.heat;
+        else if (this.statesForCool.includes(cState))
+            return homeKitCurrentStates.cool;
+        else //  (this.statesForOff.includes(state))
+            return homeKitCurrentStates.off;
     },
 
-    _mapCurrentState(cState) {
-        /*
-            1#define ENUM8005_01_TEXT "STB angesprochen"
-            2#define ENUM8005_02_TEXT "Störung"
-            3#define ENUM8005_05_TEXT "Schornsteinfegerfkt, Vollast"
-            4#define ENUM8005_06_TEXT "Schornsteinfegerfkt, Teillast"
-            5#define ENUM8005_07_TEXT "Schornsteinfegerfkt aktiv"
-            6#define ENUM8005_08_TEXT "Gesperrt, Manuell"
-            7#define ENUM8005_09_TEXT "Gesperrt, Automatisch"
-            11#define ENUM8005_0b_TEXT "Anfahrentlastung"
-            12#define ENUM8005_0c_TEXT "Anfahrentlastung, Teillast"
-            13#define ENUM8005_0d_TEXT "Rücklaufbegrenzung"
-            14#define ENUM8005_0e_TEXT "Rücklaufbegrenzung, Teillast"
-            16#define ENUM8005_10_TEXT "Freigegeben, Teillast"
-            20#define ENUM8005_14_TEXT "Minimalbegrenzung"
-            21#define ENUM8005_15_TEXT "Minimalbegrenzung, Teillast"
-            22#define ENUM8005_16_TEXT "Minimalbegrenzung aktiv"
-            59#define ENUM8005_3b_TEXT "Ladung Pufferspeicher"
-            123#define ENUM8005_7b_TEXT "STB Test aktiv"
-            166#define ENUM8005_a6_TEXT "In Betrieb für Heizkreis"
-            167#define ENUM8005_a7_TEXT "In Teillastbetrieb für HK"
-            168#define ENUM8005_a8_TEXT "In Betrieb für Trinkwasser"
-            169#define ENUM8005_a9_TEXT "In Teillastbetrieb für TWW"
-            170#define ENUM8005_aa_TEXT "In Betrieb für HK, TWW"
-            171#define ENUM8005_ab_TEXT "In Teillastbetrieb für HK, TWW"
-            172#define ENUM8005_ac_TEXT "Gesperrt, Feststoffkessel"
-            173#define ENUM8005_ad_TEXT "Freigegeben für HK, TWW"
-            174#define ENUM8005_ae_TEXT "Freigeben für TWW"
-            175#define ENUM8005_af_TEXT "Freigegeben für HK"
-            176#define ENUM8005_b0_TEXT "Gesperrt, Außentemperatur"
-            198#define ENUM8005_c6_TEXT "Gesperrt, Ökobetrieb"
-        * */
-        if (this.isDHW) {
-            switch (cState) {
-                case 168:
-                    return 1;
-                case 169:
-                    return 2;
-                case 170:
-                    return 1;
-                case 171:
-                    return 2;
-                default:
-                    return 0;
-            }
-        } else {
-            switch (cState) {
-                case 166:
-                    return 1;
-                case 167:
-                    return 2;
-                case 170:
-                    return 1;
-                case 171:
-                    return 2;
-                default:
-                    return 0;
+    _getTemperatureBSBId(cState) {
+        //var tState = this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).value;
+        //var cState = this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).value;
+        //this.log('TargetHeatingCoolingState %s', tState);
+        //this.log('CurrentHeatingCoolingState %s', cState);
+        switch (cState) {
+            case homeKitCurrentStates.off: // 0
+                return this.frostTempID;
+            case homeKitCurrentStates.heat: // 1
+                return this.comfortTempID;
+            case homeKitCurrentStates.cool: // 2
+                return this.coolingTempID;
+            default:
+                return this.comfortTempID; // 3
+        }
+    },
+
+    _getTargetTempID: function () {
+
+        if (this.isDHW){
+            return this._getTemperatureBSBId(this.targetState);
+        }else{
+            if(this.targetState == homeKitCurrentStates.auto){
+
+                if (this.statesAutoHeat.includes(this.currentState))
+                    return this._getTemperatureBSBId(homeKitCurrentStates.heat);
+                else if (this.statesAutoCool.includes(this.currentState))
+                    return this._getTemperatureBSBId(homeKitCurrentStates.cool);
+                else
+                    return this._getTemperatureBSBId(this.targetState);
+
+            }else{
+                return this._getTemperatureBSBId(this.targetState);
             }
         }
 
 
+    },
+
+
+    _getStatusTargetTemperature: function (callback) {
+        this.log('------------------_getStatusTargetTemperature------------------');
+        try {
+            if (this.isInGetStatus === false) {
+
+                var targedTempID = this._getTargetTempID();
+                var url = this.apiroute + '/JQ=' + targedTempID;
+                this.log('Getting status: %s', url);
+                this.isInGetStatus = true; // prevent multiple call at the same time, because the BSB cannot handle multi request
+                this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
+                    this.isInGetStatus = false;
+                    if (error) {
+                        this.log.warn('Error getting status: %s', error.message);
+                        this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(new Error('Polling failed'));
+                        callback(error)
+                    } else {
+                        try {
+                            this.log.debug('Device response: %s', responseBody);
+                            var json = JSON.parse(responseBody);
+                            this.service.getCharacteristic(Characteristic.TargetTemperature).updateValue(json[targedTempID].value);
+                            this.log('Updated TargetTemperature to: %s', json[targedTempID].value);
+                            callback();
+                        } catch (e) {
+                            this.log.error('_getStatus error %s: %s', e.message, responseBody);
+                            callback(e.message)
+                        }
+                    }
+                }.bind(this))
+            }
+        } finally {
+            this.isInGetStatus = false;
+        }
     },
 
 
@@ -292,12 +286,13 @@ Thermostat.prototype = {
         try {
             if (this.isInGetStatus === false) {
 
-                this.isInGetStatus = true; // prevent multiple call at the same time, because the BSB cannot handle multi request
-                var url = this.apiroute + '/JQ=8005,' + this.coolingTempID + ',' + this.comfortTempID + ',' + this.currentTemperatureID + ',' + this.targetTemperatureID + ',' + this.heatingStateID + ',' + this.humiditySensorID + ',' + this.comfortTempID + ',' + this.coolingTempID;
-                this.log.debug('Getting status: %s', url);
-                this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
+                var targedTempID = this._getTargetTempID();
+                var url = this.apiroute + '/JQ=' + this.currentHeatingCircuitStateID + ',' + this.heatingStateID + ',' + this.currentTemperatureID + ',' + this.humiditySensorID + ',' + targedTempID;
 
-                    var homeKitState;
+                this.log('Getting status: %s', url);
+                this.isInGetStatus = true; // prevent multiple call at the same time, because the BSB cannot handle multi request
+                this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
+                    this.isInGetStatus = false;
 
                     if (error) {
                         this.log.warn('Error getting status: %s', error.message);
@@ -309,38 +304,26 @@ Thermostat.prototype = {
 
                             var json = JSON.parse(responseBody);
 
-                            homeKitState = this._mapStateFromBSB(json[this.heatingStateID].value);
-                            //this.currentState = homeKitState;
+                            var currentHeatingState = json[this.currentHeatingCircuitStateID].value;
+                            var heatingState = json[this.heatingStateID].value;
+                            var currentTemperature = json[this.currentTemperatureID].value;
+                            var homeKitState = bsbToHomeKitState[parseInt(heatingState)];
 
-                            this.currentState = json['8005'].value;
+                            this.targetState = homeKitState;
+                            this.currentState = this._mapCurrentState(parseInt(currentHeatingState));
 
-                            //this.log('Current State %s', this.currentState);
-
-
-                            this.log('                        ');
-                            this.log('----------set Homekit States----------');
                             this.log('Update TargetHeatingCoolingState to: %s', homeKitState);
                             this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(homeKitState);
-                            //this.log('Updated TargetHeatingCoolingState to: %s', this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).value);
 
 
-                            this.log('Update CurrentHeatingCoolingState to: %s', this._mapCurrentState(parseInt(this.currentState)));
-                            this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(this._mapCurrentState(parseInt(this.currentState)));
-                            //this.log('Updated CurrentHeatingCoolingState to: %s', this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).value);
-                            this.log('----------set Homekit States--- END ----------');
-                            this.log('                        ');
+                            this.log('Update CurrentHeatingCoolingState to: %s', this.currentState);
+                            this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(this.currentState);
 
+                            this.service.getCharacteristic(Characteristic.TargetTemperature).updateValue(json[targedTempID].value);
+                            this.log('Updated TargetTemperature to: %s', json[targedTempID].value);
 
-                            if (this.isDHW) {
-                                this.service.getCharacteristic(Characteristic.TargetTemperature).updateValue(json[this._getTemperatureBSBId()].value);
-                                this.log('Updated TargetTemperature to: %s', json[this._getTemperatureBSBId()].value);
-                            } else {
-                                this.service.getCharacteristic(Characteristic.TargetTemperature).updateValue(json[this.targetTemperatureID].value);
-                                this.log('Updated TargetTemperature to: %s', json[this.targetTemperatureID].value);
-                            }
-
-                            this.service.getCharacteristic(Characteristic.CurrentTemperature).updateValue(json[this.currentTemperatureID].value);
-                            this.log('Updated CurrentTemperature to: %s', json[this.currentTemperatureID].value);
+                            this.service.getCharacteristic(Characteristic.CurrentTemperature).updateValue(currentTemperature);
+                            this.log('Updated CurrentTemperature to: %s', currentTemperature);
 
 
                             if (this.temperatureThresholds) {
@@ -350,128 +333,90 @@ Thermostat.prototype = {
                                 this.log.debug('Updated HeatingThresholdTemperature to: %s', json.heatingThresholdTemperature)
                             }
                             if (this.currentRelativeHumidity) {
-                                this.service.getCharacteristic(Characteristic.CurrentRelativeHumidity).updateValue(json[this.humiditySensorID].value);
-                                this.log('Updated CurrentRelativeHumidity to: %s', json[this.humiditySensorID].value)
+                                var humiditySensor = json[this.humiditySensorID].value;
+
+                                this.service.getCharacteristic(Characteristic.CurrentRelativeHumidity).updateValue(humiditySensor);
+                                this.log('Updated CurrentRelativeHumidity to: %s', humiditySensor)
                             }
 
                             callback();
-
                         } catch (e) {
-                            this.log.error('Cannot map json Result: %s', responseBody);
+                            this.log.error('_getStatus error %s: %s', e.message, responseBody);
+                            this.isInGetStatus = false;
                             callback(e.message)
                         }
                     }
                 }.bind(this))
             }
-
-
         } finally {
             this.isInGetStatus = false;
         }
 
-
-        /*
-        this.log('TargetHeaterCoolerState1');
-        this.service.getCharacteristic(Characteristic.TargetHeaterCoolerState).updateValue(1);
-
-
-        this.log('TargetHeaterCoolerState2');
-        this.service.getCharacteristic(Characteristic.TargetHeaterCoolerState).updateValue(2);
-
-
-
-
-        this.log('CurrentHeaterCoolerState0');
-        this.service.getCharacteristic(Characteristic.CurrentHeaterCoolerState).updateValue(0);
-
-
-        this.log('CurrentHeaterCoolerState1');
-        this.service.getCharacteristic(Characteristic.CurrentHeaterCoolerState).updateValue(1);
-
-
-        this.log('CurrentHeaterCoolerState2');
-        this.service.getCharacteristic(Characteristic.CurrentHeaterCoolerState).updateValue(2);
-    */
-
-
     },
 
-    _httpHandler: function (characteristic, value) {
-        switch (characteristic) {
-            case 'targetHeatingCoolingState':
-                this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(value);
-                this.log('Updated %s to: %s', characteristic, value);
-                break
-            case 'targetTemperature':
-                this.service.getCharacteristic(Characteristic.TargetTemperature).updateValue(value);
-                this.log('Updated %s to: %s', characteristic, value);
-                break
-            case 'coolingThresholdTemperature':
-                this.service.getCharacteristic(Characteristic.CoolingThresholdTemperature).updateValue(value);
-                this.log('Updated %s to: %s', characteristic, value);
-                break
-            case 'heatingThresholdTemperature':
-                this.service.getCharacteristic(Characteristic.HeatingThresholdTemperature).updateValue(value);
-                this.log('Updated %s to: %s', characteristic, value);
-                break
-            case 'getCurrentTemperatur':
-                this.service.getCharacteristic(Characteristic.CurrentTemperature);
-                this.log('getCurrentTemperatur %s ', characteristic);
-                break
-            case 'getTargetTemperature':
-                this.service.getCharacteristic(Characteristic.TargetTemperature);
-                this.log('getTargetTemperature %s ', characteristic);
-                break
-            default:
-                this.log.warn('Unknown characteristic "%s" with value "%s"', characteristic, value)
-        }
-    },
-
-    setTargetHeatingCoolingState: function (value, callback) {
-        var bsbState;
-        var homeKitState = value;
-        bsbState = this._mapStateFromHomekit(value);
-        //this.currentState = homeKitState;
-
-
-        // if DHW is set to true and the state is set to "heat", the DHWPush is triggered!
-        if ((this.isDHW == true) && (homeKitState == 1)) {
-            this._setDHWPush();
-        }
-
-        var url = this.apiroute + '/S' + this.heatingStateID + '=' + bsbState;
-        this.log('Setting targetHeatingCoolingState: %s', url);
-        this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
-            if (error) {
-                this.log.warn('Error setting targetHeatingCoolingState: %s', error.message);
-                callback(error)
-            } else {
-                this._getStatus(function () {
-                });    // poll current values from heater to display correct destination temperature
-                this.log('Set targetHeatingCoolingState to: %s', homeKitState);
-
-                //this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(homeKitState);
-                //this.log('Set CurrentHeatingCoolingState to: %s', homeKitState);
-                //this.log('CheckValue %s',this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).value)
-                callback()
-            }
-        }.bind(this))
-    },
 
     setTargetTemperature: function (value, callback) {
         value = value.toFixed(1)
-        var url = this.apiroute + '/S' + this._getTemperatureBSBId() + '=' + value;
-        //this.log('Setting targetTemperature: %s', url);
-        this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
-            if (error) {
-                this.log.warn('Error setting targetTemperature: %s', error.message);
-                callback(error)
-            } else {
-                this.log('Set targetTemperature to: %s / BSBID %s', value, this._getTemperatureBSBId());
-                callback()
-            }
-        }.bind(this))
+
+        this._getStatus(function () {
+
+                var targedTempID = this._getTargetTempID();
+                var url = this.apiroute + '/S' + targedTempID + '=' + value;
+                this.log('Getting status: %s', url);
+                this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
+                    if (error) {
+                        this.log.warn('Error setting targetTemperature: %s', error.message);
+                        callback(error)
+                    } else {
+                        this.log('Set targetTemperature to: %s / BSBID %s', value, targedTempID);
+                        callback()
+                    }
+                }.bind(this));
+
+            }.bind(this)
+        );
     },
+
+    _setTargetHeatingCoolingState: function (homeKitState, callback) {
+        var bsbState = homeKitToBSBState[homeKitState];
+
+        // if DHW is set to true and the state is set to "heat", the DHWPush is triggered!
+        if ((this.isDHW == true) && (homeKitState == homeKitCurrentStates.heat)) {
+            this._DHWPush();
+            // set to old Value, because the Push/heat State is only temporarily
+            this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(this.targetState);
+        } else {
+
+            var url = this.apiroute + '/S' + this.heatingStateID + '=' + bsbState;
+            this.log('Getting status: %s', url);
+            this._httpRequest(url, '', this.http_method, function (error, response, responseBody) {
+
+
+                if (error) {
+                    this.log.warn('Error setting targetHeatingCoolingState: %s', error.message);
+                } else {
+                    this.targetState = homeKitState;
+                    this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(homeKitState);
+                    this.log('Set CurrentHeatingCoolingState to: %s', homeKitState);
+
+                    this._getStatusTargetTemperature(function () {});
+                    this.log('Set targetHeatingCoolingState to: %s', homeKitState);
+                    this.targetState = homeKitState;
+                }
+                if (callback) {
+                    if (error) {
+                        callback(error)
+                    } else {
+                        callback();
+                        //this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(homeKitState);
+                        //this.log('Set CurrentHeatingCoolingState to: %s', homeKitState);
+                        //this.log('CheckValue %s',this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).value)
+                    }
+                }
+            }.bind(this))
+        }
+    },
+
 
     setCoolingThresholdTemperature: function (value, callback) {
         value = value.toFixed(1);
@@ -505,6 +450,77 @@ Thermostat.prototype = {
         }.bind(this))
     },
 
+
+    setDispatch: function (value, callback, characteristic) {
+        switch (characteristic) {
+            case Characteristic.TargetHeatingCoolingState:
+                this._setTargetHeatingCoolingState(value, callback);
+        }
+    },
+
+    makeHelper: function (characteristic) {
+
+        //this.log('Characteristic.TargetHeatingCoolingState %s',Characteristic.TargetHeatingCoolingState);
+
+        var timeoutID = null;
+        return {
+            setter: function (value, callback) {
+                if (this.setterDelay === 0) {
+                    // no setter delay or internal set - do it immediately
+                    //this.log.debug("updating " + characteristic.displayName.replace(/\s/g, '') + " with value " + value);
+                    this.setDispatch(value, callback, characteristic);
+                } else {
+                    // making a request and setter delay is set
+                    // optimistic callback calling if we have a delay
+                    // this also means we won't be getting back any errors in homekit
+                    callback();
+
+                    //this.log.debug("updating " + characteristic.displayName.replace(/\s/g, '') + " with value " + value + " in " + this.setterDelay + "ms");
+                    if (timeoutID != null) {
+                        clearTimeout(timeoutID);
+                        this.log.debug("clearing timeout ");
+                    }
+                    timeoutID = setTimeout(function () {
+                        this.setDispatch(value, null, characteristic);
+                        timeoutID = null;
+                    }.bind(this), this.setterDelay);
+                }
+            }
+        };
+    },
+
+    _httpHandler: function (characteristic, value) {
+        switch (characteristic) {
+            case 'targetHeatingCoolingState':
+                this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).updateValue(value);
+                this.log('Updated %s to: %s', characteristic, value);
+                break
+            case 'targetTemperature':
+                this.service.getCharacteristic(Characteristic.TargetTemperature).updateValue(value);
+                this.log('Updated %s to: %s', characteristic, value);
+                break
+            case 'coolingThresholdTemperature':
+                this.service.getCharacteristic(Characteristic.CoolingThresholdTemperature).updateValue(value);
+                this.log('Updated %s to: %s', characteristic, value);
+                break
+            case 'heatingThresholdTemperature':
+                this.service.getCharacteristic(Characteristic.HeatingThresholdTemperature).updateValue(value);
+                this.log('Updated %s to: %s', characteristic, value);
+                break
+            case 'getCurrentTemperatur':
+                this.service.getCharacteristic(Characteristic.CurrentTemperature);
+                this.log('getCurrentTemperatur %s ', characteristic);
+                break
+            case 'getTargetTemperature':
+                this.service.getCharacteristic(Characteristic.TargetTemperature);
+                this.log('getTargetTemperature %s ', characteristic);
+                break
+            default:
+                this.log.warn('Unknown characteristic "%s" with value "%s"', characteristic, value)
+        }
+    },
+
+
     getServices: function () {
         this.informationService = new Service.AccessoryInformation();
         this.informationService
@@ -515,9 +531,10 @@ Thermostat.prototype = {
 
         this.service.getCharacteristic(Characteristic.TemperatureDisplayUnits).updateValue(this.temperatureDisplayUnits);
 
-        this.service
-            .getCharacteristic(Characteristic.TargetHeatingCoolingState)
-            .on('set', this.setTargetHeatingCoolingState.bind(this));
+
+        this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).on('set', this.makeHelper(Characteristic.TargetHeatingCoolingState).setter.bind(this));
+
+        //this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState).on('set', this.setTargetHeatingCoolingState.bind(this));
 
         if (this.heatOnly) {
             this.service.getCharacteristic(Characteristic.TargetHeatingCoolingState)
