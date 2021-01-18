@@ -52,9 +52,8 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 | `currentHeatingCircuitStateID` | BSB States-Field to detect current heating states  | `8000` | `8003` |
 | `statesForHeat` | BSB States to detect current heating | `[4, 102, 111, 112, 113, 114]` | `[95,96]` |
 | `statesForCool` | BSB States to detect current cooling  | `[103, 104, 105, 106, 116]` | `[97]` |
-| `statesAutoHeat` | BSB States to detect target temperature for heating | `[114]` |  |
-| `statesAutoCool` | BSB States to detect target temperature for cooling  | `[116]` |  |
 | `heatingStateID` | The BSB ID for the target heating state | `700` | `1600` |
+| `currentHeatOperationModeID` | The BSB ID for the current operation heating mode | `10102` |  |
 | --- | --- | --- | --- |
 | `comfortTempID` | The BSB ID for in comfort mode | `710` | `1610` |
 | `coolingTempID` | The BSB ID for in cooling mode | `712` | `1612` |
