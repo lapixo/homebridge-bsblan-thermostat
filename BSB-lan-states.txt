@@ -1,0 +1,145 @@
+8000-8002:
+
+0;---
+3;Wächter angesprochen
+4;Handbetrieb aktiv
+17;Nachlauf aktiv
+22;Anlagenfrostschutz aktiv
+23;Frostschutz aktiv
+24;Aus
+56;Überhitzschutz aktiv
+101;Raumfrostschutz aktiv
+102;Estrichfunktion aktiv
+103;Eingeschränkt, Kesselschutz
+104;Eingeschränkt, TWW-Vorrang
+105;Eingeschränkt, Puffer
+106;Heizbetrieb eingeschränkt
+107;Zwangsabnahme Puffer
+108;Zwangsabnahme TWW
+109;Zwangsabnahme Erzeuger
+110;Zwangsabnahme
+111;Einschaltoptimierung + Schnellaufheizung
+112;Einschaltoptimierung
+113;Schnellaufheizung
+114;Heizbetrieb Komfort
+115;Ausschaltoptimierung
+116;Heizbetrieb Reduziert
+117;Vorlauffrostschutz aktiv
+118;Sommerbetrieb
+119;Tages-Eco aktiv
+120;Absenkung Reduziert
+121;Absenkung Frostschutz
+122;Raumtemperaturbegrenzung
+248;Pumpendauerlauf
+
+
+8003:
+
+0;---
+3;Wächter angesprochen
+4;Handbetrieb aktiv
+17;Nachlauf aktiv
+24;Frostschutz aktiv
+25;Aus
+53;Rückkühlung aktiv
+66;Ladung Elektroeinsatz
+67;Zwangsladung aktiv
+69;Ladung aktiv
+70;Geladen, Max Speichertemperatur
+71;Geladen, Max Ladetemperatur
+75;Geladen
+77;Rückkühlung via Kollektor
+78;Rückkühlung via Erzeuger/HK
+79;Entladeschutz aktiv
+80;Ladezeitbegrenzung aktiv
+81;Ladung gesperrt
+82;Ladesperre aktiv
+83;Zwang, Max Speichertemperatur
+84;Zwang, Max Ladetemperatur
+85;Zwang, Legionellensollwert
+86;Zwang, Nennsollwert
+87;Ladung Elektro, Legionellensollwert
+88;Ladung Elektro, Nennsollwert
+89;Ladung Elektro, Reduziertsollwert
+90;Ladung Elektro, Frostschutzsollwert
+91;Elektroeinsatz freigegeben
+92;Push, Legionellensollwert
+93;Push, Nennsollwert
+94;Push aktiv
+95;Ladung, Legionellensollwert
+96;Ladung, Nennsollwert
+97;Ladung, Reduziertsollwert
+98;Geladen, Legionellentemperatur
+99;Geladen, Nenntemperatur
+100;Geladen, Reduzierttemperatur
+199;Zapfbetrieb
+200;Bereit
+201;Bereitschaftsladung
+
+
+8005:
+
+0;---
+1;STB angesprochen
+2;Störung
+3;Wächter angesprochen
+4;Handbetrieb aktiv
+5;Schornsteinfegerfkt, Vollast
+6;Schornsteinfegerfkt, Teillast
+7;Schornsteinfegerfkt aktiv
+8;Gesperrt, Manuell
+9;Gesperrt, Automatisch
+10;Gesperrt
+11;Anfahrentlastung
+12;Anfahrentlastung, Teillast
+13;Rücklaufbegrenzung
+14;Rücklaufbegrenzung, Teillast
+15;Freigegeben
+16;Freigegeben, Teillast
+17;Nachlauf aktiv
+18;In Betrieb
+19;Freigegeben
+20;Minimalbegrenzung
+21;Minimalbegrenzung, Teillast
+22;Minimalbegrenzung aktiv
+23;Anlagenfrostschutz aktiv
+24;Frostschutz aktiv
+25;Aus
+59;Ladung Pufferspeicher
+123;STB Test aktiv
+166;In Betrieb für Heizkreis
+167;In Teillastbetrieb für HK
+168;In Betrieb für Trinkwasser
+169;In Teillastbetrieb für TWW
+170;In Betrieb für HK, TWW
+171;In Teillastbetrieb für HK, TWW
+172;Gesperrt, Feststoffkessel
+173;Freigegeben für HK, TWW
+174;Freigeben für TWW
+175;Freigegeben für HK
+176;Gesperrt, Außentemperatur
+198;Gesperrt, Ökobetrieb
+220;Reglerstoppfunktion aktiv
+
+
+8007:
+
+0;---
+4;Handbetrieb aktiv
+2;Störung
+52;Kollektorfrostschutz aktiv
+53;Rückkühlung aktiv
+54;Max Speichertemperatur erreicht
+55;Verdampfungsschutz aktiv
+56;Überhitzschutz aktiv
+57;Max Ladetemperatur erreicht
+58;Ladung Trinkwasser
+59;Ladung Pufferspeicher
+60;Ladung Schwimmbad
+61;Min Ladetemperatur nicht erreicht
+62;Temperaturdifferenz ungenügend
+63;Einstrahlung ungenügend
+151;Ladung TWW + Puffer + Schwimmbad
+152;Ladung Trinkwasser + Puffer
+153;Ladung Trinkwasser + Schwimmbad
+154;Ladung Puffer + Schwimmbad
