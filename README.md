@@ -28,7 +28,7 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 ```json
 "accessories": [
     {
-        "accessory": "Thermostat",
+        "accessory": "BSBThermostat",
         "name": "Thermostat-HK1",
         "apiroute": "http://bsb-lan_ip",
         "pollInterval": 35
@@ -104,13 +104,13 @@ Example Config with to Thermostate:
 ```json
     "accessories": [
         {
-            "accessory": "Thermostat",
+            "accessory": "BSBThermostat",
             "name": "Thermostat-HK1",
             "apiroute": "http://BSB_LAN_IP",
             "pollInterval": 35
         },
         {
-            "accessory": "Thermostat",
+            "accessory": "BSBThermostat",
             "name": "Thermostat-TW",
             "apiroute": "http://BSB_LAN_IP",
             "pollInterval": 50,
