@@ -41,7 +41,7 @@ homeKitToBSBStateStr[homeKitCurrentStates.heat] = 'heat';
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
-    homebridge.registerAccessory('bsblan/homebridge-bsblan-thermostat', 'Thermostat', Thermostat);
+    homebridge.registerAccessory('bsblan/homebridge-bsblan-thermostat', 'BSBThermostat', Thermostat);
 };
 
 
@@ -247,7 +247,7 @@ Thermostat.prototype = {
         if (this.isDHW || (this.targetState != homeKitCurrentStates.auto)) {
             return this._getTemperatureBSBId(this.targetState);
         } else {
-            return this._mapCurrentOPState(this.currentOPState);
+            return this._getTemperatureBSBId(this.currentOPState);
             /*
             if (this.statesAutoHeat.includes(this.currentState))
                 return this._getTemperatureBSBId(homeKitCurrentStates.heat);
