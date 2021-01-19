@@ -1,6 +1,6 @@
 {
   "name": "@bsblan/homebridge-bsblan-thermostat",
-  "version": "1.0.24",
+  "version": "1.0.25",
   "description": "Homebridge plugin for a bsb-lan based thermostat",
   "main": "index.js",
   "dependencies": {

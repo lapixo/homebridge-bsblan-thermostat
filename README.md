@@ -39,7 +39,7 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 ### Core
 | Key | Description | Default |
 | --- | --- | --- |
-| `accessory` | Must be `Thermostat` | N/A |
+| `accessory` | Must be `BSBThermostat` | N/A |
 | `name` | Name to appear in the Home app | N/A |
 | `apiroute` | Root HTTP URL of your device without trailing slash  | http://bsb-lan |
 

@@ -41,7 +41,7 @@ homeKitToBSBStateStr[homeKitCurrentStates.heat] = 'heat';
 module.exports = function (homebridge) {
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
-    homebridge.registerAccessory('bsblan/homebridge-bsblan-thermostat', 'BSBThermostat', Thermostat);
+    homebridge.registerAccessory('@bsblan/homebridge-bsblan-thermostat', 'BSBThermostat', Thermostat);
 };
 
 
