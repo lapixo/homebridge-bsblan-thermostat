@@ -112,7 +112,7 @@ function Thermostat(log, config) {
 
     if (this.isDHW) {
         this.currentHeatingCircuitStateID = config.currentHeatingCircuitStateID || 8003;
-        this.statesForHeat = config.statesForHeat || [95, 96];
+        this.statesForHeat = config.statesForHeat || [85,86,88,92,93,95, 96];
         this.statesForCool = config.statesForCool || [97];
         //this.statesForOff = config.statesForOff || [25];
 
@@ -433,9 +433,6 @@ Thermostat.prototype = {
                         callback(error)
                     } else {
                         callback();
-                        //this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).updateValue(homeKitState);
-                        //this.log('Set CurrentHeatingCoolingState to: %s', homeKitState);
-                        //this.log('CheckValue %s',this.service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).value)
                     }
                 }
             }.bind(this))

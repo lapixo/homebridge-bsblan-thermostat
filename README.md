@@ -50,7 +50,7 @@ This Plugin is based on [homebridge-web-thermostat](https://github.com/Tommrodri
 | `isDHW` | Use as DHW Thermostat  | `false` |  |
 | --- | --- | --- | --- |
 | `currentHeatingCircuitStateID` | BSB States-Field to detect current heating states  | `8000` | `8003` |
-| `statesForHeat` | BSB States to detect current heating | `[4, 102, 111, 112, 113, 114]` | `[95,96]` |
+| `statesForHeat` | BSB States to detect current heating | `[4, 102, 111, 112, 113, 114]` | `[85,86,88,92,93,95,96]` |
 | `statesForCool` | BSB States to detect current cooling  | `[103, 104, 105, 106, 116]` | `[97]` |
 | `heatingStateID` | The BSB ID for the target heating state | `700` | `1600` |
 | `currentHeatOperationModeID` | The BSB ID for the current operation heating mode | `10102` |  |
